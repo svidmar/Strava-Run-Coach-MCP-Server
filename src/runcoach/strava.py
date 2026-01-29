@@ -178,6 +178,7 @@ def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> 
     avg_speed = activity.get("average_speed", 0)
     distance = activity.get("distance", 0)
     moving_time = activity.get("moving_time", 0)
+    elapsed_time = activity.get("elapsed_time", moving_time)  # Use elapsed_time, fall back to moving_time
 
     if compact:
         # Minimal format for large lists
@@ -187,7 +188,7 @@ def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> 
             "date": activity.get("start_date_local", "")[:10],
             "name": activity.get("name"),
             "distance": format_distance(distance),
-            "time": format_duration(moving_time),
+            "time": format_duration(elapsed_time),  # Use elapsed_time for compact view
             "pace": pace,
             "hr": activity.get("average_heartrate"),
         }
@@ -201,6 +202,8 @@ def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> 
         "distance_meters": distance,
         "moving_time": format_duration(moving_time),
         "moving_time_seconds": moving_time,
+        "elapsed_time": format_duration(elapsed_time),  # Add elapsed_time
+        "elapsed_time_seconds": elapsed_time,  # Add elapsed_time in seconds
         "pace": format_pace(avg_speed) if activity.get("type") == "Run" else None,
         "average_speed_mps": avg_speed,
         "elevation_gain": f"{activity.get('total_elevation_gain', 0):.0f}m",

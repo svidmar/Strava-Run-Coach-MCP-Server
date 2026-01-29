@@ -24,7 +24,7 @@ A local MCP server that connects Claude Desktop to your Strava data, enabling a 
 ### 2. Install Dependencies
 
 ```bash
-cd /Users/sv/Documents/Python/runcoach
+cd /Users/.../runcoach
 pip install -e .
 ```
 
@@ -100,18 +100,46 @@ Then restart Claude Desktop.
 
 Once set up, you can ask Claude things like:
 
+### Basic Activity Queries
 - "What were my recent runs?"
 - "How did my 10K on Saturday go? Show me the splits."
 - "What's my training load been like the past month?"
-- "Add a goal to run a sub-50 minute 10K by June"
-- "I'm racing the Chicago Marathon on October 13th, goal time 3:30"
-- "Based on my recent training, am I ready for my upcoming race?"
+- "Show me all runs over 20km from this year"
 
-For historical analysis, first sync your data:
-- "Sync all my Strava activities"
+### Training Analysis
+- "What's my average pace at different heart rate zones?"
+- "Has my pace improved at the same heart rate over the past 6 months?"
+- "Compare my January and February training volume"
+- "How much elevation have I gained in my runs this year?"
+- "Am I running more consistently this year compared to last year?"
+
+### Performance Insights
+- "Based on my 10K PR, what marathon time should I target?"
+- "How has my heart rate changed at marathon pace over the past year?"
+- "What's my average pace on hilly vs flat routes?"
+- "Show me my progression on my usual 10km route"
+- "Are my long runs getting faster or am I maintaining better consistency?"
+
+### Goal Setting & Race Prep
+- "Add a goal to run a sub-50 minute 10K by March"
+- "I'm racing the Chicago Marathon on October 13th, goal time 3:30"
+- "Based on my recent training, am I ready for my upcoming half marathon?"
+- "Create a 12-week marathon training plan based on my current fitness"
+
+### Historical Analysis
+First sync your data with "Sync all my Strava activities", then:
 - "Show my yearly running stats"
 - "Find my longest runs from 2024"
 - "Compare my 2023 and 2024 training volume"
+- "What were my peak training weeks before my last marathon?"
+- "How many runs did I do per week during my last marathon build-up?"
+
+### Advanced Coaching
+- "I want to run a sub-3:15 marathon in June. Based on my PRs and training history, is this realistic?"
+- "Analyze my heart rate data - am I improving my aerobic efficiency?"
+- "What's the optimal weekly mileage for me based on what I've done before?"
+- "I have a half marathon in 4 weeks. Should I taper and how much?"
+
 
 ## File Structure
 
@@ -155,3 +183,16 @@ Delete `data/tokens.json` and re-authenticate.
 - `data/tokens.json` contains sensitive OAuth tokens and is gitignored
 - Tokens auto-refresh when expired (Strava tokens expire after 6 hours)
 - Only you can access your Strava data through this local server
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions welcome!
+
+## Acknowledgments
+
+- Built with [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+- Powered by [Strava API](https://developers.strava.com/)
