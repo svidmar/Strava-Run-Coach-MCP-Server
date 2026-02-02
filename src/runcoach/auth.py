@@ -47,8 +47,19 @@ def is_token_expired(tokens: dict) -> bool:
     return time.time() > (expires_at - 60)
 
 
-def refresh_access_token(client_id: str, client_secret: str, refresh_token: str) -> dict:
-    """Refresh the access token using the refresh token."""
+def refresh_access_token(tokens: dict) -> dict:
+    """Refresh the access token using the refresh token.
+
+    Preserves all existing fields (client_id, client_secret, athlete, etc.)
+    and updates only the token-related fields from the API response.
+    """
+    client_id = tokens.get("client_id")
+    client_secret = tokens.get("client_secret")
+    refresh_token = tokens.get("refresh_token")
+
+    if not all([client_id, client_secret, refresh_token]):
+        raise ValueError("Missing credentials in tokens. Re-run authentication.")
+
     with httpx.Client() as client:
         response = client.post(
             STRAVA_TOKEN_URL,
@@ -60,7 +71,13 @@ def refresh_access_token(client_id: str, client_secret: str, refresh_token: str)
             },
         )
         response.raise_for_status()
-        return response.json()
+        api_response = response.json()
+
+    # Start with existing tokens to preserve all fields (client_id, client_secret, athlete, etc.)
+    new_tokens = tokens.copy()
+    # Update with new values from API (access_token, refresh_token, expires_at, etc.)
+    new_tokens.update(api_response)
+    return new_tokens
 
 
 def exchange_code_for_tokens(client_id: str, client_secret: str, code: str) -> dict:
@@ -90,20 +107,21 @@ def get_authorization_url(client_id: str, redirect_uri: str = "http://localhost"
     return f"{STRAVA_AUTH_URL}?{urlencode(params)}"
 
 
-def get_valid_token(client_id: str, client_secret: str) -> str | None:
-    """Get a valid access token, refreshing if necessary."""
+def get_valid_token() -> str:
+    """Get a valid access token, refreshing if necessary.
+
+    Raises ValueError if no tokens found or refresh fails.
+    """
     tokens = load_tokens()
     if not tokens:
-        return None
+        raise ValueError("No tokens found. Run 'python -m runcoach.auth' to authenticate.")
+
+    if not tokens.get("client_id") or not tokens.get("client_secret"):
+        raise ValueError("Client credentials not found in tokens. Re-run authentication.")
 
     if is_token_expired(tokens):
-        # Refresh the token
-        new_tokens = refresh_access_token(
-            client_id, client_secret, tokens["refresh_token"]
-        )
-        # Preserve athlete info if present
-        if "athlete" in tokens and "athlete" not in new_tokens:
-            new_tokens["athlete"] = tokens["athlete"]
+        # Refresh the token - this preserves all existing fields
+        new_tokens = refresh_access_token(tokens)
         save_tokens(new_tokens)
         return new_tokens["access_token"]
 

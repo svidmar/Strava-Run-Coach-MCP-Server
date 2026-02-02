@@ -1,12 +1,14 @@
 """Strava API client."""
 
-import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
 
-from .auth import get_valid_token, load_tokens
+from .auth import get_valid_token
+
+# Day names for date formatting
+DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 STRAVA_API_BASE = "https://www.strava.com/api/v3"
 
@@ -32,26 +34,8 @@ class StravaClient:
             await self._client.aclose()
 
     def _get_access_token(self) -> str:
-        """Get a valid access token."""
-        tokens = load_tokens()
-        if not tokens:
-            raise ValueError(
-                "No tokens found. Run 'python -m runcoach.auth' to authenticate."
-            )
-
-        client_id = tokens.get("client_id")
-        client_secret = tokens.get("client_secret")
-
-        if not client_id or not client_secret:
-            raise ValueError(
-                "Client credentials not found in tokens. Re-run authentication."
-            )
-
-        token = get_valid_token(client_id, client_secret)
-        if not token:
-            raise ValueError("Failed to get valid token. Re-run authentication.")
-
-        return token
+        """Get a valid access token, refreshing automatically if expired."""
+        return get_valid_token()
 
     async def _request(
         self, method: str, endpoint: str, **kwargs
@@ -173,6 +157,19 @@ def format_duration(seconds: int) -> str:
     return f"{minutes}:{secs:02d}"
 
 
+def format_date(iso_date_str: str) -> str:
+    """Format ISO date string with day of week (e.g., 'Saturday 2026-01-31')."""
+    if not iso_date_str:
+        return ""
+    date_part = iso_date_str[:10]  # Extract YYYY-MM-DD
+    try:
+        dt = datetime.fromisoformat(date_part)
+        day_name = DAY_NAMES[dt.weekday()]
+        return f"{day_name} {date_part}"
+    except ValueError:
+        return date_part
+
+
 def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> dict[str, Any]:
     """Format an activity into a readable summary."""
     avg_speed = activity.get("average_speed", 0)
@@ -185,7 +182,7 @@ def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> 
         pace = format_pace(avg_speed) if activity.get("type") == "Run" else None
         return {
             "id": activity.get("id"),
-            "date": activity.get("start_date_local", "")[:10],
+            "date": format_date(activity.get("start_date_local", "")),
             "name": activity.get("name"),
             "distance": format_distance(distance),
             "time": format_duration(elapsed_time),  # Use elapsed_time for compact view
@@ -197,7 +194,7 @@ def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> 
         "id": activity.get("id"),
         "name": activity.get("name"),
         "type": activity.get("type"),
-        "date": activity.get("start_date_local", "")[:10],
+        "date": format_date(activity.get("start_date_local", "")),
         "distance": format_distance(distance),
         "distance_meters": distance,
         "moving_time": format_duration(moving_time),
