@@ -129,6 +129,10 @@ class StravaClient:
         """Get laps for an activity."""
         return await self._request("GET", f"/activities/{activity_id}/laps")
 
+    async def get_gear(self, gear_id: str) -> dict[str, Any]:
+        """Get details about a specific piece of gear (shoe/bike)."""
+        return await self._request("GET", f"/gear/{gear_id}")
+
 
 def format_pace(meters_per_second: float) -> str:
     """Convert m/s to min/km pace string."""
@@ -188,6 +192,7 @@ def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> 
             "time": format_duration(elapsed_time),  # Use elapsed_time for compact view
             "pace": pace,
             "hr": activity.get("average_heartrate"),
+            "gear_id": activity.get("gear_id"),
         }
 
     return {
@@ -208,4 +213,5 @@ def format_activity_summary(activity: dict[str, Any], compact: bool = False) -> 
         "max_heartrate": activity.get("max_heartrate"),
         "suffer_score": activity.get("suffer_score"),
         "calories": activity.get("calories"),
+        "gear_id": activity.get("gear_id"),
     }

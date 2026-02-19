@@ -158,6 +158,30 @@ async def list_tools() -> list[Tool]:
                 "required": [],
             },
         ),
+        # Shoe/gear tools
+        Tool(
+            name="get_shoes",
+            description="Get all your shoes from Strava with total mileage, retired status, and which is primary. Useful for tracking shoe wear and knowing when to replace them.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        Tool(
+            name="get_shoe_usage",
+            description="Analyze shoe usage across your runs. Shows which shoes you use for different run types, distances, and paces. Requires sync_all_activities first.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "gear_id": {
+                        "type": "string",
+                        "description": "Filter to a specific shoe by gear ID (optional, omit for all shoes)",
+                    },
+                },
+                "required": [],
+            },
+        ),
         # Local data tools
         Tool(
             name="get_goals",
@@ -327,6 +351,12 @@ async def _handle_tool(name: str, arguments: dict[str, Any]) -> Any:
         return _search_activities(arguments)
     elif name == "get_yearly_stats":
         return _get_yearly_stats(arguments)
+
+    # Shoe/gear tools
+    elif name == "get_shoes":
+        return await _get_shoes()
+    elif name == "get_shoe_usage":
+        return _get_shoe_usage(arguments)
 
     # Goals tools
     elif name == "get_goals":
@@ -513,6 +543,129 @@ def _get_yearly_stats(arguments: dict[str, Any]) -> dict[str, Any]:
     return {
         "cache_updated": cache.get("updated_at"),
         "yearly_stats": result,
+    }
+
+
+async def _get_shoes() -> dict[str, Any]:
+    """Get all shoes from athlete profile with mileage stats."""
+    athlete = await strava.get_athlete()
+    shoes = athlete.get("shoes", [])
+
+    formatted_shoes = []
+    for shoe in shoes:
+        distance_m = shoe.get("distance", 0)
+        distance_km = distance_m / 1000
+        # Shoes are generally recommended to be replaced at 500-800 km
+        wear_pct = min(round(distance_km / 700 * 100), 100)
+
+        formatted_shoes.append({
+            "id": shoe.get("id"),
+            "name": shoe.get("name"),
+            "primary": shoe.get("primary", False),
+            "retired": shoe.get("retired", False),
+            "distance": format_distance(distance_m),
+            "distance_km": round(distance_km, 1),
+            "estimated_wear_pct": wear_pct,
+            "recommendation": (
+                "Retired" if shoe.get("retired") else
+                "Replace soon" if distance_km >= 700 else
+                "Monitor wear" if distance_km >= 500 else
+                "Good condition"
+            ),
+        })
+
+    # Sort: active primary first, then active by distance desc, then retired
+    formatted_shoes.sort(key=lambda s: (s["retired"], not s["primary"], -s["distance_km"]))
+
+    return {
+        "total_shoes": len(formatted_shoes),
+        "active_shoes": sum(1 for s in formatted_shoes if not s["retired"]),
+        "shoes": formatted_shoes,
+    }
+
+
+def _get_shoe_usage(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Analyze shoe usage across cached activities."""
+    cache = get_activities_cache()
+    if not cache:
+        return {"error": "No cached activities. Run sync_all_activities first."}
+
+    activities = cache.get("activities", [])
+    runs = [a for a in activities if a.get("type") == "Run"]
+
+    target_gear_id = arguments.get("gear_id")
+
+    # Group runs by gear_id
+    shoe_stats: dict[str, dict] = {}
+    for run in runs:
+        gear_id = run.get("gear_id")
+        if not gear_id:
+            continue
+        if target_gear_id and gear_id != target_gear_id:
+            continue
+
+        if gear_id not in shoe_stats:
+            shoe_stats[gear_id] = {
+                "gear_id": gear_id,
+                "total_runs": 0,
+                "total_distance_m": 0,
+                "total_time_s": 0,
+                "paces": [],
+                "distances": [],
+                "workout_types": {},
+                "first_used": None,
+                "last_used": None,
+            }
+
+        stats = shoe_stats[gear_id]
+        stats["total_runs"] += 1
+        distance = run.get("distance", 0)
+        stats["total_distance_m"] += distance
+        stats["total_time_s"] += run.get("moving_time", 0)
+        stats["distances"].append(distance / 1000)
+
+        avg_speed = run.get("average_speed", 0)
+        if avg_speed > 0:
+            stats["paces"].append(avg_speed)
+
+        # Track workout types
+        wt = run.get("workout_type")
+        wt_name = _workout_type_name(wt) or "Default"
+        stats["workout_types"][wt_name] = stats["workout_types"].get(wt_name, 0) + 1
+
+        # Track date range
+        run_date = run.get("start_date_local", "")[:10]
+        if run_date:
+            if not stats["first_used"] or run_date < stats["first_used"]:
+                stats["first_used"] = run_date
+            if not stats["last_used"] or run_date > stats["last_used"]:
+                stats["last_used"] = run_date
+
+    # Format results
+    result = []
+    for gear_id, stats in shoe_stats.items():
+        avg_distance_km = stats["total_distance_m"] / stats["total_runs"] / 1000 if stats["total_runs"] > 0 else 0
+        avg_pace = sum(stats["paces"]) / len(stats["paces"]) if stats["paces"] else 0
+
+        result.append({
+            "gear_id": stats["gear_id"],
+            "total_runs": stats["total_runs"],
+            "total_distance": format_distance(stats["total_distance_m"]),
+            "total_distance_km": round(stats["total_distance_m"] / 1000, 1),
+            "total_time": format_duration(stats["total_time_s"]),
+            "average_run_distance_km": round(avg_distance_km, 1),
+            "average_pace": format_pace(avg_pace) if avg_pace > 0 else "N/A",
+            "workout_types": stats["workout_types"],
+            "first_used": stats["first_used"],
+            "last_used": stats["last_used"],
+        })
+
+    result.sort(key=lambda s: s["total_distance_km"], reverse=True)
+
+    return {
+        "cache_updated": cache.get("updated_at"),
+        "shoes_with_data": len(result),
+        "shoe_usage": result,
     }
 
 
