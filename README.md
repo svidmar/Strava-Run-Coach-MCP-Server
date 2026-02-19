@@ -6,6 +6,7 @@ A local MCP server that connects Claude Desktop to your Strava data, enabling a 
 
 - **Strava Integration**: Access your training data, activities, and PRs
 - **Training Analysis**: Weekly/monthly mileage trends and training load
+- **Shoe Tracking**: Monitor shoe mileage, wear, and usage patterns
 - **Goal Tracking**: Set and track your running goals
 - **Race Calendar**: Manage upcoming races with goal times
 
@@ -84,6 +85,13 @@ Then restart Claude Desktop.
 | `search_activities` | Search cached activities by year, distance, type |
 | `get_yearly_stats` | Aggregated running stats by year |
 
+### Shoe Tracking
+
+| Tool | Description |
+|------|-------------|
+| `get_shoes` | List all shoes with mileage, wear status, and replacement recommendations |
+| `get_shoe_usage` | Analyze which shoes you use for different run types, distances, and paces |
+
 ### Goals & Races
 
 | Tool | Description |
@@ -133,6 +141,13 @@ First sync your data with "Sync all my Strava activities", then:
 - "Compare my 2023 and 2024 training volume"
 - "What were my peak training weeks before my last marathon?"
 - "How many runs did I do per week during my last marathon build-up?"
+
+### Shoe Management
+- "What shoes do I have and how worn are they?"
+- "Which shoes should I retire?"
+- "Which shoes do I use for fast workouts vs easy runs?"
+- "How many km are on my Pegasus?"
+- "Recommend which shoe I should wear for my long run this weekend"
 
 ### Advanced Coaching
 - "I want to run a sub-3:15 marathon in June. Based on my PRs and training history, is this realistic?"
