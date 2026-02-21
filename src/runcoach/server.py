@@ -37,6 +37,17 @@ async def list_tools() -> list[Tool]:
     """List available tools."""
     return [
         # Strava data tools
+        # System tools
+        Tool(
+            name="get_current_date",
+            description="Get the current date and time. Use this to know what day it is for training planning and date calculations.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        ),
+        # Strava data tools
         Tool(
             name="get_athlete_profile",
             description="Get your Strava athlete profile including name, location, and basic stats",
@@ -334,8 +345,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 async def _handle_tool(name: str, arguments: dict[str, Any]) -> Any:
     """Route tool calls to appropriate handlers."""
 
+    # System tools
+    if name == "get_current_date":
+        return _get_current_date()
+    
     # Strava tools
-    if name == "get_athlete_profile":
+    elif name == "get_athlete_profile":
         return await _get_athlete_profile()
     elif name == "get_recent_activities":
         return await _get_recent_activities(arguments)
@@ -384,6 +399,20 @@ async def _handle_tool(name: str, arguments: dict[str, Any]) -> Any:
 
     else:
         raise ValueError(f"Unknown tool: {name}")
+
+
+def _get_current_date() -> dict[str, Any]:
+    """Get the current date and time."""
+    now = datetime.now()
+    return {
+        "date": now.strftime("%Y-%m-%d"),
+        "day_of_week": now.strftime("%A"),
+        "full_datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "iso_week": now.isocalendar()[1],
+        "year": now.year,
+        "month": now.month,
+        "day": now.day,
+    }
 
 
 async def _get_athlete_profile() -> dict[str, Any]:
